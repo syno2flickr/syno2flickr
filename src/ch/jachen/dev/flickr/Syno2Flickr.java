@@ -64,7 +64,7 @@ class ProgressUpload extends Thread{
 				System.out.print(" ");
 			}
 			System.out.print("| "
-					+ String.format("%3d", ((int) (progressPercentage * 100)))
+					+ String.format("%3d", (finished ? 100 : progressPercentage==1?99:(int) (progressPercentage * 100)))
 					+ "% (" + String.format("%.1fMB/%.1fMB", progress/(1024*1024), total/(1024*1024)) + ")");
 		}	
 	}
