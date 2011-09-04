@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Stack;
 import java.util.logging.Logger;
 
 import org.jickr.Auth;
@@ -13,10 +14,84 @@ import org.jickr.FlickrException;
 import org.jickr.MimeType;
 import org.jickr.Permission;
 import org.jickr.Photo;
+import org.jickr.PhotoSet;
 import org.jickr.PhotoUpload;
+import org.jickr.Privacy;
 import org.jickr.RequestEvent;
 import org.jickr.RequestListener;
+import org.jickr.User;
 import org.jickr.UserLimitations;
+
+/**
+ * Class to animate progress uploading in Console output
+ * @author jbrek
+ *
+ */
+class ProgressUpload extends Thread{
+
+	private final double progress;
+	private final double total;
+	private boolean stop=false;
+	private static long calls = 0;
+								
+	public ProgressUpload(double progress, double total) {
+		this.progress = progress;
+		this.total = total;
+	}
+	
+	private final static int width = 50; // progress bar width in chars
+	private final static char[] animationChars = new char[] { '-', '\\', '|', '/' };
+	
+	/**
+	 * Show progress of upload in Console
+	 * @param progress progress in bytes
+	 * @param total	total in bytes
+	 * @param finished is the progress finished
+	 */
+	public static void showProgress(double progress, double total, boolean finished){
+		
+		double progressPercentage = progress / total;
+		
+		synchronized (System.out) {
+			System.out.print("\rProcessing: |");
+			int i = 0;
+			int max = 0;
+			for (; i <= (max = (int) (progressPercentage * width)); i++) {
+				System.out.print(((i < max || finished) ? "="
+						: animationChars[(int)(calls++ % 4)]));
+			}
+			for (; i <= width; i++) {
+				System.out.print(" ");
+			}
+			System.out.print("| "
+					+ String.format("%3d", ((int) (progressPercentage * 100)))
+					+ "% (" + String.format("%.1fMB/%.1fMB", progress/(1024*1024), total/(1024*1024)) + ")");
+		}	
+	}
+	
+	public void stopRun(){
+		stop = true;
+	}
+	
+	
+	@Override
+	public void run() {
+										
+		// Update progress									
+		while(!stop){
+			
+			showProgress(progress, total, false);
+			
+			try {
+				Thread.sleep(200);
+			} catch (InterruptedException e) { }
+		}
+		
+		if (progress==total)
+			showProgress(total, total, true);
+	}
+	
+}
 
 /**
  * Main class
@@ -24,67 +99,30 @@ import org.jickr.UserLimitations;
  * @author jbrek
  * 
  */
+
 public class Syno2Flickr {
 
 	/**
 	 * Progress bar for console output
 	 * @param progressPercentage progress (0.0. to 1.0)
 	 */
-	static long calls = 0;
-	static void updateProgress(double progressPercentage) {
-		final int width = 50; // progress bar width in chars
-		char[] animationChars = new char[] { '-', '\\', '|', '/' };
-
-		System.out.print("\rProcessing: |");
-		int i = 0;
-		int max = 0;
-		for (; i <= (max = (int) (progressPercentage * width)); i++) {
-			System.out.print(((i < max || progressPercentage == 1.0) ? "="
-					: animationChars[(int)(calls++ % 4)]));
+	private static Stack<Thread> progressList = new Stack<Thread>();
+	private static void stopAllThreads(){
+		
+		while(!progressList.empty()){
+			ProgressUpload p = (ProgressUpload) progressList.pop();
+			p.stopRun();
 		}
-		for (; i <= width; i++) {
-			System.out.print(" ");
-		}
-		System.out.print("| "
-				+ String.format("%3d", ((int) (progressPercentage * 100)))
-				+ "%" + (progressPercentage==1.0?"\n":""));
 	}
-
+	
 	/**
-	 * Main method
+	 * Authentication to flickr
 	 * 
-	 * @param args
+	 * @param user
+	 * @param perm
 	 */
-	public static void main(String[] args) {
-
-		// Initialization
-		String syncFolder = null; // folder to upload
-		org.jickr.Permission perm = Permission.WRITE; // access level we want
-		org.jickr.User user = null; // User Flickr authenticated
-
-		// Get property values
-		try {
-
-			// Test first arg (must be the path of the properties file)
-			if (args != null && args.length > 0)
-				if (new File(args[0]).exists())
-					Syno2FlickrProperties.setPropertyFile(args[0]);
-
-			// Set key/secret
-			Flickr.setApiKey(Syno2FlickrProperties.getApiKey());
-			Flickr.setSharedSecret(Syno2FlickrProperties.getSharedSecret());
-
-			// Get folder to sync
-			syncFolder = Syno2FlickrProperties.getFolderToSync();
-
-		} catch (Syno2FlickrException e) {
-
-			// Message d'erreur
-			System.out.println(e.getMessage());
-
-			System.exit(0);
-		}
-
+	private static User authenticationToFlickr(User user, Permission perm){
+		
 		// Establish Flickr auth. or ask permission to
 		try {
 			user = Auth.getDefaultAuthUser(); // Check to see if we've already
@@ -117,89 +155,146 @@ public class Syno2Flickr {
 				try {
 					user = Auth.authenticate();
 				} catch (FlickrException ex) {
-					Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).severe(
-							"Failure to authenticate.");
+					System.out.println("Failure to authenticate.");
 					System.exit(1);
 				}
 				if (Auth.isAuthenticated(user, perm)) {
-					Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info(
-							"We're authenticated with "
+					System.out.println("We're authenticated with "
 									+ Auth.getPermLevel(user) + " access.");
 					Auth.setDefaultAuthUser(user);
 				} else {
 					// Shouldn't ever get here - we throw an exception above if
 					// we
 					// can't authenticate.
-					Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).severe(
-							"Oddly unauthenticated");
+					System.out.println("Oddly unauthenticated");
 					System.exit(2);
 				}
 
 			} // if (user == null || !Auth.isAuthenticated(user, perm)) {
-			else {
-
-				// If already authenticated
-				Logger.getLogger(Logger.GLOBAL_LOGGER_NAME)
-						.info(
-								"Already authenticated to at least " + perm
-										+ " level.");
-				Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info(
-						"We're actually at the " + Auth.getPermLevel(user)
-								+ " level.");
-			}
+		
 		} catch (FlickrException e1) {
-			Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).severe(
-					"Error while Flickr authentication\n" + e1.getMessage());
+			System.out.println("Error while Flickr authentication\n" + e1.getMessage());
 			System.exit(0);
 		} catch (IOException e1) {
-			Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).severe(
-					"Error while Flickr authentication\n" + e1.getMessage());
+			System.out.println("Error while Flickr authentication\n" + e1.getMessage());
 			System.exit(0);
 		}
 
 		// Set authentication context for user (credentials)
 		Auth.resetAuthContext();
 		Auth.setAuthContext(user);
-
-		// Get user upload limitations
-		UserLimitations userLimits = new UserLimitations();
-		long bandwithMaxBytes = 0, bandwidthRemainingBytes = 0, bandwidthUsedBytes = 0 ;
-		long filesizeMaxBytes = 0 ;
-		long videosizeMaxBytes=0, videosUploaded=0;
-		String videosRemaining = null;
-		boolean pro = false, bandwidthIlimited=false;
 		try {
-			bandwithMaxBytes = userLimits.getBandwidthMaxBytes();
-			bandwidthRemainingBytes = userLimits.getBandwidthRemainingBytes();
-			bandwidthUsedBytes = userLimits.getBandwidthUsedBytes();
-			filesizeMaxBytes = userLimits.getFilesizeMaxBytes();
-			videosizeMaxBytes = userLimits.getVideosizeMaxBytes();
-			videosRemaining = userLimits.getVideosRemaining();
-			videosUploaded = userLimits.getVideosUploaded();
-			bandwidthIlimited = userLimits.isBandwidthUnlimited();
-			pro = userLimits.isPro();
-		} catch (FlickrException e1) {
-			System.out.println(e1.getMessage());
-			System.exit(0);
+			user = User.findByNSID(user.getNSID());
+		} catch (FlickrException e) {
+			System.out.println("Error: can't retrieve user NSID: "+user.getNSID());
 		}
 		
-		// Show limit / usage
-		int denomMega = 1024*1024;
-		System.out.println("Usage and limitations status");
-		System.out.println("  Pro account: "+ (pro?"yes":"no"));
-		System.out.println("  Bandwith:");
-		System.out.println("\tUnlimited: "+(bandwidthIlimited?"yes":"no"+
-						   "\tMax: "+bandwithMaxBytes/denomMega+"MB" +
-						   "\tRemaining: "+bandwidthRemainingBytes/denomMega+"MB"+
-						   "\tUsed: "+bandwidthUsedBytes/denomMega+"MB"));
-		System.out.println("  Image:");
-		System.out.println("\tMax size: "+ filesizeMaxBytes/denomMega+"MB");
-		System.out.println("  Video:");
-		System.out.println("\tMax size: "+videosizeMaxBytes/denomMega+"MB"+
-						   "\tRemaing: "+videosRemaining+
-						   "\tUploaded: "+videosUploaded+"\n");
+		// Show infos
+		System.out.println("\n\nHello "+user.getRealName());
+		System.out.println("\tYou have " +user.getPhotoCount()+" photos");
 		
-		// Check what to upload
+		return user;
+	
+	}
+	
+	/**
+	 * Welcome message
+	 */
+	public static void printWelcome(){
+		System.out.println("**********************************************************************");
+		System.out.println("* Syno2Flickr v0.1 09/2011                                           *");
+		System.out.println("*                                                                    *");
+		System.out.println("**********************************************************************");
+		
+	}
+	
+	
+	/**
+	 * Main method
+	 * 
+	 * @param args
+	 */
+	public static void main(String[] args) {
+
+		// Initialization
+		String syncFolder = null; // folder to upload
+		String archiveFolderString = null; // archive folder
+		String defaultSetId = null; // id of default set for new photos
+		Privacy defaultPrivacy = null; // default privacy
+		org.jickr.Permission perm = Permission.WRITE; // access level we want
+		org.jickr.User user = null; // User Flickr authenticated
+
+		// Welcome
+		printWelcome();
+		
+		// Get property values
+		try {
+
+			// Test first arg (must be the path of the properties file)
+			if (args != null && args.length > 0)
+				if (new File(args[0]).exists())
+					Syno2FlickrProperties.setPropertyFile(args[0]);
+
+			// Set key/secret
+			Flickr.setApiKey(Syno2FlickrProperties.getApiKey());
+			Flickr.setSharedSecret(Syno2FlickrProperties.getSharedSecret());
+
+			// Get folder to sync
+			syncFolder = Syno2FlickrProperties.getFolderToSync();
+			
+			// Archive folder
+			archiveFolderString = Syno2FlickrProperties.getArchiveFolder();
+			
+			// Default set id
+			defaultSetId = Syno2FlickrProperties.getDefaultSetId();
+			
+			// Default privacy
+			String privacyString = Syno2FlickrProperties.getDefaultPrivacy();
+			defaultPrivacy = Privacy.valueOf(Integer.parseInt(privacyString));
+
+		} catch (Syno2FlickrException e) {
+
+			// Error message
+			System.out.println(e.getMessage());
+
+			System.exit(0);
+		} catch (NumberFormatException e){
+			// Error while getting the default privacy
+			System.out.println("Error while getting default privacy, value must be between 0 and 4. Default privacy will be set to private");
+			defaultPrivacy = Privacy.PRIVATE;
+		}
+
+		// Auth
+		user = authenticationToFlickr(user, perm);
+		
+		// Check default set
+		PhotoSet defaultSet=null;
+		try {
+			defaultSet = PhotoSet.findByID(defaultSetId);
+		} catch (FlickrException e3) {
+			System.out.println("Error while getting informations of the default set (id: "+
+									defaultSetId+").\n"+e3.getMessage());
+		}
+		
+		// Show params
+		System.out.println("\n\nParameters:");
+		System.out.println("\tSync folder: "+syncFolder);
+		System.out.println("\tArchive folder: "+archiveFolderString);
+		if(defaultSet!=null)
+			System.out.println("\tDefault Set: "+defaultSet.getTitle());
+		System.out.println("\tDefault privacy: "+defaultPrivacy);
+		
+		// Get user upload limitations
+		UserLimitations userLimits = new UserLimitations();
+		
+		// Show limit / usage
+		try {
+			System.out.println("\n\n"+userLimits.showUsageAndLimitations());
+		} catch (FlickrException e2) {
+			System.out.println("Error: impossible to show usage and limitations for user "+user.getUserName()+"\n"+e2.getMessage());
+		}		
+		
+		// Get list of all files to upload
 		File folder = new File(syncFolder);
 		File[] listOfFiles = folder.listFiles(new FileFilter() {
 
@@ -213,79 +308,116 @@ public class Syno2Flickr {
 				}
 			}
 		});
+		
+		// Show nb files founds
+		System.out.println("\nStart uploading: "+listOfFiles.length+ " files found to upload");
 
 		// Synchronize (upload photos/video)
-		File archiveFolder = new File(Syno2FlickrProperties.getArchiveFolder());
+		long denomMega=1024L*1024L;
+		File archiveFolder = new File(archiveFolderString);
 		int noFile = 0;
-		for (File f : listOfFiles) {
+		try {
 			
-			// init
-			calls = 0;
-			noFile++;
+			// Get bandwith remaining
+			long bandwidthRemaingBytes = userLimits.getBandwidthRemainingBytes();
 			
-			// Info
-			System.out.println("\nUpload of "+f.getName()+ " ("+noFile+"/"+listOfFiles.length+")");
-			
-			// Check limitations/file type
-			String mime=null;
-			try {
-				mime = MimeType.getMimeType("file://"+f.getPath());
-			} catch (IOException e1) {}
-			
-			if (mime!=null && mime.contains("image")) {
-				if (f.length() > filesizeMaxBytes){
-					System.out.println("Error: image " + f.getName()+ " exceeds the maximum size accepted (max. "+filesizeMaxBytes/denomMega+"MB). Skipped.");
-					continue;
-				}
-				if(!bandwidthIlimited && (bandwidthRemainingBytes-f.length()) < 0){
-					System.out.println("Error: user " + user.getUserName() + " has reached his monthly bandwidth limit. Upload cancelled.");
-					break;
-				}
-					
-			} else {
-				if (f.length() > videosizeMaxBytes){
-					System.out.println("Error: " + f.getName()+ " exceeds the maximum size accepted (max. "+videosizeMaxBytes/denomMega+"MB). Skipped.");
-					continue;
-				}
-			}
-			
-			// Generate metadata for the upload
-			PhotoUpload uploader = new PhotoUpload.Builder(f).hidden(true)
-					.build();
-
-			try {
+			for (File f : listOfFiles) {
 				
-				// Upload the content
-				Photo.uploadNewPhoto(uploader, new RequestListener() {
-
-					@Override
-					public void progressRequest(RequestEvent event) {
-						double progress = (new Double(event.getProgress()) / event.getTotalProgress());
-						updateProgress(progress);
+				// init
+				//ProgressUpload.calls = 0;
+				noFile++;
+				
+				// Info
+				System.out.println("\nSending "+f.getName()+ " ("+noFile+"/"+listOfFiles.length+")");
+				
+				// Check limitations/file type
+				String mime=null;
+				try {
+					mime = MimeType.getMimeType("file://"+f.getPath());
+				} catch (IOException e1) {}
+				
+				if (mime!=null && mime.contains("image")) {
+					if (f.length() > userLimits.getFilesizeMaxBytes()){
+						System.out.println("Error: image " + f.getName()+ " exceeds the maximum accepted size (max. "+
+												userLimits.getFilesizeMaxBytes()/denomMega+"MB). Skipped.");
+						continue;
 					}
-				}); System.out.println("");
-				
-				// Move uploaded file to archive
-				if (archiveFolder.exists()){
-					f.renameTo(new File( archiveFolder.getPath()+File.separator+f.getName()));
+					if(!userLimits.isBandwidthUnlimited() && (bandwidthRemaingBytes-f.length()) < 0){
+						System.out.println("Error: user " + user.getUserName() + 
+										   " has reached his monthly bandwidth limit ("+
+										   userLimits.getBandwidthMaxBytes()/denomMega+
+										   "MB). Upload cancelled.");
+						break;
+					}
+						
+				} else {
+					if (f.length() > userLimits.getVideosizeMaxBytes()){
+						System.out.println("Error: " + f.getName()+ 
+										   " exceeds the maximum accepted size (max. "+
+										   userLimits.getVideosizeMaxBytes()/denomMega+"MB). Skipped.");
+						continue;
+					}
 				}
 				
-				if (!bandwidthIlimited) bandwidthRemainingBytes-=f.length();
-
-			} catch (FlickrException e) {
-				
-				if (e.getCode()==6) break;
-				
-				Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).severe(
-						"An error occured while uploading file " + f.getPath()
-								+ "\n" + e.getMessage());
-				System.out.println("An error occured while uploading file "
-						+ f.getPath());
+				// Generate metadata for the upload
+				PhotoUpload uploader = new PhotoUpload.Builder(f)
+															.familyFlag(defaultPrivacy.equals(Privacy.FAMILY) || defaultPrivacy.equals(Privacy.FRIENDSANDFAMILY))
+															.friendFlag(defaultPrivacy.equals(Privacy.FRIENDS) || defaultPrivacy.equals(Privacy.FRIENDSANDFAMILY))
+															.publicFlag(defaultPrivacy.equals(Privacy.PUBLIC))
+															.build();
+	
+				try {
+					
+					// Upload the content
+					String id;
+					id = Photo.uploadNewPhoto(uploader, new RequestListener() {
+						
+						
+						@Override
+						public void progressRequest(RequestEvent event) {
+							
+							stopAllThreads();
+							ProgressUpload r = new ProgressUpload(event.getProgress(), event.getTotalProgress());
+							progressList.push(r);
+							r.start();
+							
+						}
+					}); 
+					// Stop all threads
+					stopAllThreads();
+	
+					
+					// Put in default set
+					if (defaultSet!=null){
+						try {
+							defaultSet.add(id);
+						} catch(FlickrException e){
+							System.out.println("Error while adding photo (id: "+id+") to set (id: "+defaultSet.getID()+").\n"+e.getMessage());
+						}
+					}
+					
+					// Move uploaded file to archive
+					if (archiveFolder.exists()){
+						f.renameTo(new File( archiveFolder.getPath()+File.separator+f.getName()));
+					}
+					
+					if (!userLimits.isBandwidthUnlimited()) bandwidthRemaingBytes-=f.length();
+	
+				} catch (FlickrException e) {
+					
+					if (e.getCode()==6) break;
+					
+					System.out.println("An error occured while uploading file "
+							+ f.getPath()+"\n"+e.getMessage());
+				}
 			}
+		} catch (FlickrException e){
+			System.out.println("A grave error occurs:\n"+e.getMessage());
 		}
 
 		// Summary and notify
 
-		System.out.println("Terminate.");
+		System.out.println("\n\nSend completed.\nBye.");
 	}
+
 }

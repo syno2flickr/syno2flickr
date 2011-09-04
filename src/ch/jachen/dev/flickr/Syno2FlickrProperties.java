@@ -21,6 +21,9 @@ public enum Syno2FlickrProperties {
 	private static String sharedSecret; /// Shared secret for this app
 	private static String folderSync; /// Folder synchronized with your Flickr account
 	private static String archiveFolder; /// Path to archive folder
+	private static String errorFolder; /// Path to error folder
+	private static String defaultSetId; /// Default Set id for new photos
+	private static String defaultPrivacy; /// Default privacy for new photos
 	private static boolean gotProperties = false; // Flag to know if we already read property file
 
 	/**
@@ -34,12 +37,10 @@ public enum Syno2FlickrProperties {
 		Properties prop = new Properties();
 		try {
 			prop.load(new FileInputStream(propertyFile));
-			Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info(
-					"Properties file '" + propertyFile
+			System.out.println("Properties file '" + propertyFile
 							+ "' loaded successfully.");
 		} catch (IOException e) {
-			Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).severe(
-					"Properties file '" + propertyFile + "' not found. Exit.");
+			System.out.println("Properties file '" + propertyFile + "' not found. Exit.");
 			throw new Syno2FlickrException(
 					"Cannot read Syno2Flickr properties file. "
 							+ "The properties file name must be '"
@@ -52,6 +53,8 @@ public enum Syno2FlickrProperties {
 		sharedSecret = prop.getProperty("sharedSecret");
 		folderSync = prop.getProperty("syncFolder");
 		archiveFolder = prop.getProperty("archiveFolder");
+		defaultSetId = prop.getProperty("defaultSetId");
+		defaultPrivacy = prop.getProperty("defaultPrivacy");
 		
 		// Set flag OK
 		gotProperties = true;
@@ -77,8 +80,24 @@ public enum Syno2FlickrProperties {
 	}
 
 
-	public static String getArchiveFolder() {
+	public static String getArchiveFolder() throws Syno2FlickrException {
+		if (!gotProperties)
+			readProperties();
 		return archiveFolder;
+	}
+
+
+	public static String getDefaultSetId() throws Syno2FlickrException {
+		if (!gotProperties)
+			readProperties();
+		return defaultSetId;
+	}
+
+
+	public static String getDefaultPrivacy() throws Syno2FlickrException {
+		if (!gotProperties)
+			readProperties();
+		return defaultPrivacy;
 	}
 
 
