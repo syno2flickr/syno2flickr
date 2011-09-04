@@ -20,6 +20,7 @@ public enum Syno2FlickrProperties {
 	private static String apiKey;  /// API Key provided by Flickr.com
 	private static String sharedSecret; /// Shared secret for this app
 	private static String folderSync; /// Folder synchronized with your Flickr account
+	private static String archiveFolder; /// Path to archive folder
 	private static boolean gotProperties = false; // Flag to know if we already read property file
 
 	/**
@@ -50,6 +51,7 @@ public enum Syno2FlickrProperties {
 		apiKey = prop.getProperty("apiKey");
 		sharedSecret = prop.getProperty("sharedSecret");
 		folderSync = prop.getProperty("syncFolder");
+		archiveFolder = prop.getProperty("archiveFolder");
 		
 		// Set flag OK
 		gotProperties = true;
@@ -72,6 +74,11 @@ public enum Syno2FlickrProperties {
 		if (!gotProperties)
 			readProperties();
 		return folderSync;
+	}
+
+
+	public static String getArchiveFolder() {
+		return archiveFolder;
 	}
 
 
