@@ -32,6 +32,7 @@ class ProgressUpload extends Thread{
 	private final double progress;
 	private final double total;
 	private boolean stop=false;
+	private boolean interrupt=false;
 	private static long calls = 0;
 								
 	public ProgressUpload(double progress, double total) {
@@ -73,12 +74,16 @@ class ProgressUpload extends Thread{
 		stop = true;
 	}
 	
+	public void interruptRun(){
+		interrupt = true;
+	}
+	
 	
 	@Override
 	public void run() {
 										
 		// Update progress									
-		while(!stop){
+		while(!stop && !interrupt){
 			
 			showProgress(progress, total, false);
 			
@@ -87,7 +92,7 @@ class ProgressUpload extends Thread{
 			} catch (InterruptedException e) { }
 		}
 		
-		if (progress==total)
+		if (!interrupt && progress==total)
 			showProgress(total, total, true);
 	}
 	
@@ -112,6 +117,13 @@ public class Syno2Flickr {
 		while(!progressList.empty()){
 			ProgressUpload p = (ProgressUpload) progressList.pop();
 			p.stopRun();
+		}
+	}	
+	private static void interruptAllThreads(){
+		
+		while(!progressList.empty()){
+			ProgressUpload p = (ProgressUpload) progressList.pop();
+			p.interruptRun();
 		}
 	}
 	
@@ -405,9 +417,11 @@ public class Syno2Flickr {
 	
 				} catch (FlickrException e) {
 					
+					interruptAllThreads();
+					
 					if (e.getCode()==6) break;
 					
-					System.out.println("An error occured while uploading file "
+					System.out.println("\nAn error occured while uploading file "
 							+ f.getPath()+"\n"+e.getMessage());
 				}
 			}
