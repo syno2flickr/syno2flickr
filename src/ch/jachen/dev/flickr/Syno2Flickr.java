@@ -283,10 +283,7 @@ public class Syno2Flickr {
 		PhotoSet defaultSet=null;
 		try {
 			defaultSet = PhotoSet.findByID(defaultSetId);
-		} catch (FlickrException e3) {
-			System.out.println("Error while getting informations of the default set (id: "+
-									defaultSetId+").\n"+e3.getMessage());
-		}
+		} catch (FlickrException e3) {}
 		
 		// Show params
 		System.out.println("\n\nParameters:");
@@ -294,6 +291,8 @@ public class Syno2Flickr {
 		System.out.println("\tArchive folder: "+archiveFolderString);
 		if(defaultSet!=null)
 			System.out.println("\tDefault Set: "+defaultSet.getTitle());
+		else
+			System.out.println("\tDefault Set: none");
 		System.out.println("\tDefault privacy: "+defaultPrivacy);
 		
 		// Get user upload limitations
@@ -303,11 +302,20 @@ public class Syno2Flickr {
 		try {
 			System.out.println("\n\n"+userLimits.showUsageAndLimitations());
 		} catch (FlickrException e2) {
-			System.out.println("Error: impossible to show usage and limitations for user "+user.getUserName()+"\n"+e2.getMessage());
+			System.out.println("Error: impossible to show usage and restrictions for user "+user.getUserName()+"\n"+e2.getMessage());
 		}		
 		
-		// Get list of all files to upload
+		
+		// Sync folder
 		File folder = new File(syncFolder);
+		
+		// Check upload folder
+		if (!folder.exists()){
+			System.out.println("Error: sync folder does not exist ("+folder.getPath()+"). Please verify the syno2flickr.properties config file.");
+			System.exit(0);
+		}
+		
+		// List files to upload
 		File[] listOfFiles = folder.listFiles(new FileFilter() {
 
 			@Override
@@ -327,6 +335,12 @@ public class Syno2Flickr {
 		// Synchronize (upload photos/video)
 		long denomMega=1024L*1024L;
 		File archiveFolder = new File(archiveFolderString);
+		
+		// Check archive folder folder
+		if (!archiveFolder.exists()){
+			System.out.println("Warning: archive folder does not exist ("+archiveFolder.getPath()+").");
+		}
+		
 		int noFile = 0;
 		try {
 			
@@ -339,10 +353,14 @@ public class Syno2Flickr {
 				//ProgressUpload.calls = 0;
 				noFile++;
 				
-				// Info
-				System.out.println("\nSending "+f.getName()+ " ("+noFile+"/"+listOfFiles.length+")");
-				
 				// Check limitations/file type
+				if(!userLimits.isBandwidthUnlimited() && (bandwidthRemaingBytes-f.length()) < 0){
+					System.out.println("Error: user " + user.getUserName() + 
+									   " has reached his monthly bandwidth limit ("+
+									   userLimits.getBandwidthMaxBytes()/denomMega+
+									   "MB). Upload cancelled.");
+					break;
+				}
 				String mime=null;
 				try {
 					mime = MimeType.getMimeType("file://"+f.getPath());
@@ -354,13 +372,6 @@ public class Syno2Flickr {
 												userLimits.getFilesizeMaxBytes()/denomMega+"MB). Skipped.");
 						continue;
 					}
-					if(!userLimits.isBandwidthUnlimited() && (bandwidthRemaingBytes-f.length()) < 0){
-						System.out.println("Error: user " + user.getUserName() + 
-										   " has reached his monthly bandwidth limit ("+
-										   userLimits.getBandwidthMaxBytes()/denomMega+
-										   "MB). Upload cancelled.");
-						break;
-					}
 						
 				} else {
 					if (f.length() > userLimits.getVideosizeMaxBytes()){
@@ -370,6 +381,9 @@ public class Syno2Flickr {
 						continue;
 					}
 				}
+				
+				// Info
+				System.out.println("\nSending "+f.getName()+ " ("+noFile+"/"+listOfFiles.length+")");
 				
 				// Generate metadata for the upload
 				PhotoUpload uploader = new PhotoUpload.Builder(f)
@@ -419,10 +433,10 @@ public class Syno2Flickr {
 					
 					interruptAllThreads();
 					
-					if (e.getCode()==6) break;
-					
 					System.out.println("\nAn error occured while uploading file "
 							+ f.getPath()+"\n"+e.getMessage());
+					
+					if (e.getCode()==6) break;
 				}
 			}
 		} catch (FlickrException e){
