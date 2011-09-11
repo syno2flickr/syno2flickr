@@ -70,10 +70,18 @@ class ProgressUpload extends Thread{
 		}	
 	}
 	
+	/**
+	 * Stop thread
+	 * Ends animation progress and show total progress
+	 */
 	public void stopRun(){
 		stop = true;
 	}
 	
+	/**
+	 * Interrupt thread 
+	 * Ends animation progress wihtout output
+	 */
 	public void interruptRun(){
 		interrupt = true;
 	}
@@ -85,6 +93,7 @@ class ProgressUpload extends Thread{
 		// Update progress									
 		while(!stop && !interrupt){
 			
+			// Show animation
 			showProgress(progress, total, false);
 			
 			try {
@@ -92,6 +101,7 @@ class ProgressUpload extends Thread{
 			} catch (InterruptedException e) { }
 		}
 		
+		// If process finished but not interrupted
 		if (!interrupt && progress==total)
 			showProgress(total, total, true);
 	}
@@ -119,6 +129,11 @@ public class Syno2Flickr {
 			p.stopRun();
 		}
 	}	
+	
+	/**
+	 * Interrupt all threads
+	 * Interrupt animation (used in error/exception case)
+	 */
 	private static void interruptAllThreads(){
 		
 		while(!progressList.empty()){
@@ -129,6 +144,7 @@ public class Syno2Flickr {
 	
 	/**
 	 * Authentication to flickr
+	 * Authenticates to flickr and register this app to the flickr account if needed
 	 * 
 	 * @param user
 	 * @param perm
