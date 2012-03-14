@@ -102,8 +102,9 @@ class ProgressUpload extends Thread{
 		}
 		
 		// If process finished but not interrupted
-		if (!interrupt && progress==total)
+		if (!interrupt && progress==total){ 
 			showProgress(total, total, true);
+		}
 	}
 	
 }
@@ -230,8 +231,9 @@ public class Syno2Flickr {
 	 */
 	public static void printWelcome(){
 		System.out.println("**********************************************************************");
-		System.out.println("* Syno2Flickr v0.1 09/2011                                           *");
+		System.out.println("* Syno2Flickr v0.1.1 03/2012                                         *");
 		System.out.println("*                                                                    *");
+		System.out.println("* https://github.com/syno2flickr/                                    *");
 		System.out.println("**********************************************************************");
 		
 	}
@@ -425,8 +427,12 @@ public class Syno2Flickr {
 							
 						}
 					}); 
+					
 					// Stop all threads
 					stopAllThreads();
+					try{
+						Thread.sleep(500);
+					} catch (Exception e){}
 	
 					
 					// Put in default set
