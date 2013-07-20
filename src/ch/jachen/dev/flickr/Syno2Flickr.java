@@ -229,7 +229,7 @@ public class Syno2Flickr {
 	 */
 	public static void printWelcome(){
 		System.out.println("**********************************************************************");
-		System.out.println("* Syno2Flickr v0.1.1 07/2013                                         *");
+		System.out.println("* Syno2Flickr v0.1.2 07/2013                                         *");
 		System.out.println("*                                                                    *");
 		System.out.println("**********************************************************************");
 		
