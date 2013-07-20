@@ -6,7 +6,6 @@ import java.io.FileFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Stack;
-import java.util.logging.Logger;
 
 import org.jickr.Auth;
 import org.jickr.Flickr;
@@ -230,7 +229,7 @@ public class Syno2Flickr {
 	 */
 	public static void printWelcome(){
 		System.out.println("**********************************************************************");
-		System.out.println("* Syno2Flickr v0.1 09/2011                                           *");
+		System.out.println("* Syno2Flickr v0.1.1 07/2013                                         *");
 		System.out.println("*                                                                    *");
 		System.out.println("**********************************************************************");
 		
@@ -449,18 +448,19 @@ public class Syno2Flickr {
 					
 					interruptAllThreads();
 					
-					System.out.println("\nAn error occured while uploading file "
-							+ f.getPath()+"\n"+e.getMessage());
+					System.out.println("\nERROR: An error occured while uploading file "
+							+ f.getPath()+":\n"+e.getMessage());
 					
-					if (e.getCode()==6) break;
+					if (e.getCode()==6 || e.getCode()==-999) break;
 				}
 			}
 		} catch (FlickrException e){
-			System.out.println("A grave error occurs:\n"+e.getMessage());
+			System.out.println("\nA grave error occurs:\n"+e.getMessage());
+
 		}
 
 		// Summary and notify
-
+		try { Thread.sleep(500); } catch (InterruptedException e) {}
 		System.out.println("\n\nSend completed.\nBye.");
 	}
 
