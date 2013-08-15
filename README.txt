@@ -10,9 +10,9 @@ SYNO2FLICKR
 
 DESCRIPTION
 
-	Java command line tool called "Syno2Flickr" allowing to upload 
-	your photos and videos to your flickr account. The process can
-	be run in interactive or background mode.
+    Java command line tool called "Syno2Flickr" allowing to upload 
+    your photos and videos to your flickr account. The process can
+    be run in interactive or background mode.
 
 
 LICENCE
@@ -57,17 +57,18 @@ INSTALLATION
 
     1. You must have a Java Virtual Machine installed (1.5 and above).
 
-    2. Download the lastest version (last binary can be found here: https://github.com/syno2flickr/syno2flickr/wiki)
+    2. Download the lastest binary version here: 
+       https://github.com/syno2flickr/syno2flickr/wiki
 
     3. In the zip, 6 files:
-         - syno2flickr.jar                  -> the tool bin
-         - syno2flickr_syno.properties      -> configuration sample file for synology products
-         - syno2flickr_windows.properties   -> configuration sample file for Windows
-         - syno2flickr_unix.properties      -> configuration sample file for Unix
-         - README.txt                       -> README file (this file)
-         - Licence-gpl3.0.txt               -> GPL 3.0 Licence
+      - syno2flickr-X.Y.Z.jar          -> the tool bin
+      - syno2flickr_syno.properties    -> conf. for synology products
+      - syno2flickr_windows.properties -> conf. for Windows
+      - syno2flickr_unix.properties    -> conf. for Unix
+      - README.txt                     -> README file
+      - Licence-gpl3.0.txt             -> GPL 3.0 Licence
 
-    4. You have to get an application key and a secret key (Non-Commercial, don't make this app public please).
+    4. You have to get an application key and a secret key.
        (http://www.flickr.com/services/apps/create/apply/)
 
     5. Edit the syno2flickr.properties config file and add 
@@ -88,14 +89,14 @@ RUN syno2Flickr
           register this app with your flickr account.
 
     Run in interactive mode:
-        #> java -Dfile.encoding=UTF8 -jar syno2flickr.jar syno2flickr.properties
+      #> java  -jar syno2flickr.jar syno2flickr.properties
 
     Run in background mode for unix (need nohup installed):
-        #> nohup java -Dfile.encoding=UTF8 -jar syno2flickr.jar syno2flickr.properties >syno2flickr.log 2>&1 &
+      #> nohup java -jar syno2flickr.jar syno2flickr.properties >syno2flickr.log 2>&1 &
 
 
 ADVANCED FEATURES
 
     To override a config property via command-line, use this syntax:
-        #> java -Dfile.encoding=UTF8 -jar syno2flickr.jar syno2flickr.properties <propertyName>=<value>
-        #> java -Dfile.encoding=UTF8 -jar syno2flickr.jar syno2flickr.properties defaultPrivacy=1 "syncFolder=C:\\My photos"
+      #> java -jar syno2flickr.jar syno2flickr.properties <propertyName>=<value>
+      #> java -jar syno2flickr.jar syno2flickr.properties defaultPrivacy=1 "syncFolder=C:\\My photos"
