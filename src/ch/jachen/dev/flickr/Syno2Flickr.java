@@ -158,9 +158,9 @@ public class Syno2Flickr {
 	public static void printWelcome(){
 		System.out.print("\n");
 		System.out.println("**********************************************************************");
-		System.out.println("* Syno2Flickr v0.2.0 - 08/2013                                       *");
+		System.out.println("* Syno2Flickr v0.2.0 - 15 august 2013                                *");
 		System.out.println("*    https://github.com/syno2flickr/syno2flickr                      *");
-		System.out.println("**********************************************************************");		
+		System.out.println("**********************************************************************");
 	}
 	
 	

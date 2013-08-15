@@ -101,3 +101,9 @@ ADVANCED FEATURES
     #> java -jar syno2flickr.jar syno2flickr.properties <propertyName>=<value>
   Exemple:
     #> java -jar syno2flickr.jar syno2flickr.properties defaultPrivacy=1 "syncFolder=C:\\My photos"
+
+
+TROUBLESHOOTING
+  #1 "Error: Invalid or corrupt jarfile syno2flickr.properties":
+     => add "-Dfile.encoding=UTF8" parameter for java command like this:
+     #> java -Dfile.encoding=UTF8 -jar syno2flickr.jar syno2flickr.properties
