@@ -2,8 +2,8 @@ README FILE
 
 
 SYNO2FLICKR
-  Version:       0.2.0
-  Release date:  20/08/2013
+  Version:       0.2.1
+  Release date:  June 2nd, 2014
   Web site:      https://github.com/syno2flickr/
   Author:        Jachen Brechbuehl
 
@@ -32,6 +32,8 @@ LICENCE
 
 
 CHANGELOG
+ 0.2.1
+    - HTTPS support
   0.2.0
     - Sets and collections can be auto generated
     - Default license

@@ -2,6 +2,6 @@
 <classpath>
 	<classpathentry excluding="*syno2flickr.properties" kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/jickr_jb"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/jickr-2.0-0.2.x"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
